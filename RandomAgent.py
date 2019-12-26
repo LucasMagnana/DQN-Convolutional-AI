@@ -15,6 +15,8 @@ import numpy as np
 
 from random import * 
 
+import copy
+
 class NN(nn.Module):
 
     def __init__(self, N_in):
@@ -31,15 +33,24 @@ class NN(nn.Module):
 
 class RandomAgent(object):
     """The world's simplest agent!"""
-    def __init__(self, action_space, neur):
+    def __init__(self, action_space):
         self.action_space = action_space
         self.buffer = []
-        self.buffer_size = 100
+        self.buffer_size = 100000
         self.compteur_buffer = 0
         self.replace_buffer = False
-        self.neur = neur
-        self.epsilon = 0.4
-        self.gamma = 0.1
+
+        self.pas = 0.005
+        self.epsilon = 1.0
+        self.gamma = 0.9
+        self.nb_learn_step = 1000
+        self.learn_step = 0
+
+        self.neur = NN(10)
+        self.neur_target = NN(10)
+        self.optimizer = torch.optim.Adam(self.neur.parameters(), 0.01) # smooth gradient descent
+        self.optimizer_target = torch.optim.Adam(self.neur_target.parameters(), 0.01) # smooth gradient descent
+
         
 
     def act(self, observation, reward, done):
@@ -47,10 +58,14 @@ class RandomAgent(object):
         tens_action = self.neur(observation)
         rand = random()
         if(rand > self.epsilon):
-            return (tens_action == torch.max(tens_action).item()).nonzero().item()
+            tens = (tens_action == torch.max(tens_action).item()).nonzero()
+            if(len(tens)>1):
+                return 0
+            else :
+                return tens.item()
         return randint(0, len(tens_action)-1)
 
-    def sample(self, n=10):
+    def sample(self, n=100):
         if(n > len(self.buffer)):
             n = len(self.buffer)
         return sample(self.buffer, n)
@@ -65,23 +80,31 @@ class RandomAgent(object):
             self.compteur_buffer = 0
             self.replace_buffer = True
 
-    def calcul_erreur(self):
-        loss = nn.MSELoss() #mean square error
+    def learn(self):
+        self.epsilon *= 0.99
+        if(self.epsilon < 0.05):
+            self.epsilon = 0
         spl = self.sample()
         for screen in spl :
+            self.learn_step += 1
+            if(self.learn_step%self.nb_learn_step == 0):
+                self.optimizer_target.zero_grad()
+                self.neur_target = copy.deepcopy(self.neur)
+                self.optimizer_target.step()
             tensor_qvalues = self.neur(screen[0].astype("float32"))
             qvalue = tensor_qvalues[screen[1]]
             reward = screen[3]
-            if(screen[4]):
-                next_qvalues = self.neur(screen[2].astype("float32"))
-                max_next_qvalues = torch.max(next_qvalues).item()
-                erreur = torch.FloatTensor([reward+self.gamma*max_next_qvalues])
+            if(not screen[4]):
+                next_qvalues = self.neur_target(screen[2].astype("float32"))
+                max_next_qvalues = torch.max(next_qvalues)
+                erreur = reward+self.gamma*max_next_qvalues
             else :
                 erreur = torch.FloatTensor([reward])
-            optimizer.zero_grad()
-            loss_tmp = loss(qvalue, erreur)
+
+            self.optimizer.zero_grad()
+            loss_tmp = (qvalue-erreur)**2
             loss_tmp.backward()
-            optimizer.step()
+            self.optimizer.step()
 
 
 
@@ -105,14 +128,12 @@ if __name__ == '__main__':
     outdir = '/tmp/random-agent-results'
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
-    neur = NN(5)
-    agent = RandomAgent(env.action_space, neur)
+    agent = RandomAgent(env.action_space)
 
     episode_count = 1000
     reward = 0
     done = False
 
-    optimizer = torch.optim.SGD(neur.parameters(), 0.01) # smooth gradient descent
 
     reward_accumulee=0
     tab_rewards_accumulees = []
@@ -122,13 +143,12 @@ if __name__ == '__main__':
         while True:
             ob = ob.astype('float32')
             ob_prec = ob
-            agent.calcul_erreur()
             action = agent.act(ob, reward, done)
             ob, reward, done, _ = env.step(action)
             agent.remplir_buffer(ob_prec, action, ob, reward, done)
             reward_accumulee += reward
             if done:
-                print(reward_accumulee)
+                agent.learn()
                 tab_rewards_accumulees.append(reward_accumulee)
                 reward_accumulee=0
                 break
