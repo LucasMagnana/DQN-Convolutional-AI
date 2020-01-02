@@ -6,7 +6,8 @@ from gym import wrappers, logger
 import matplotlib
 import matplotlib.pyplot as plt
 
-from AgentStick import AgentStick
+from RandomAgent import *
+from AtariPreprocessing import AtariPreprocessing
 
 
 
@@ -14,7 +15,7 @@ from AgentStick import AgentStick
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('env_id', nargs='?', default='CartPole-v1', help='Select the environment to run')
+    parser.add_argument('env_id', nargs='?', default='BreakoutNoFrameskip-v4', help='Select the environment to run')
     args = parser.parse_args()
 
     # You can set the level to logger.DEBUG or logger.WARN if you
@@ -30,9 +31,12 @@ if __name__ == '__main__':
     outdir = './videos/stick-agent-results'
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
-    agent = AgentStick(env.action_space)
 
-    episode_count = 1000
+    preproc = AtariPreprocessing(env, scale_obs=True)
+
+    agent = RandomAgent(env.action_space)
+
+    episode_count = 100
     reward = 0
     done = False
 
@@ -41,16 +45,14 @@ if __name__ == '__main__':
     tab_rewards_accumulees = []
 
     for i in range(episode_count):
-        ob = env.reset()
+        ob = preproc.reset()
         while True:
             ob = ob.astype('float32')
             ob_prec = ob
             action = agent.act(ob, reward, done)
-            ob, reward, done, _ = env.step(action)
-            agent.remplir_buffer(ob_prec, action, ob, reward, done)
+            ob, reward, done, _ = preproc.step(action)
             reward_accumulee += reward
             if done:
-                agent.learn()
                 tab_rewards_accumulees.append(reward_accumulee)
                 reward_accumulee=0
                 break
