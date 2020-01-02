@@ -43,13 +43,13 @@ class RandomAgent(object):
         self.pas = 0.005
         self.epsilon = 1.0
         self.gamma = 0.9
-        self.nb_learn_step = 1000
+        self.nb_learn_step = 4000
         self.learn_step = 0
 
-        self.neur = NN(10)
-        self.neur_target = NN(10)
-        self.optimizer = torch.optim.Adam(self.neur.parameters(), 0.01) # smooth gradient descent
-        self.optimizer_target = torch.optim.Adam(self.neur_target.parameters(), 0.01) # smooth gradient descent
+        self.neur = NN(15)
+        self.neur_target = copy.deepcopy(self.neur)
+        self.optimizer = torch.optim.SGD(self.neur.parameters(), 0.01) # smooth gradient descent
+        #self.optimizer_target = torch.optim.Adam(self.neur_target.parameters(), 0.01) # smooth gradient descent
 
         
 
@@ -87,10 +87,8 @@ class RandomAgent(object):
         spl = self.sample()
         for screen in spl :
             self.learn_step += 1
-            if(self.learn_step%self.nb_learn_step == 0):
-                self.optimizer_target.zero_grad()
+            if(self.learn_step%self.nb_learn_step == 0 and self.learn_step < 75000):
                 self.neur_target = copy.deepcopy(self.neur)
-                self.optimizer_target.step()
             tensor_qvalues = self.neur(screen[0].astype("float32"))
             qvalue = tensor_qvalues[screen[1]]
             reward = screen[3]
