@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 from RandomAgent import *
 from AtariPreprocessing import AtariPreprocessing
+from FrameStack import FrameStack
 
 
 
@@ -32,7 +33,8 @@ if __name__ == '__main__':
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
 
-    preproc = AtariPreprocessing(env, scale_obs=True)
+    env = FrameStack(env, 4)
+    preproc = AtariPreprocessing(env)
 
     agent = RandomAgent(env.action_space)
 
@@ -51,6 +53,7 @@ if __name__ == '__main__':
             ob_prec = ob
             action = agent.act(ob, reward, done)
             ob, reward, done, _ = preproc.step(action)
+            print(len(ob))
             reward_accumulee += reward
             if done:
                 tab_rewards_accumulees.append(reward_accumulee)

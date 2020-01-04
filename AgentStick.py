@@ -24,7 +24,7 @@ class AgentStick(object):
 
         self.neur = NN(15)
         self.neur_target = copy.deepcopy(self.neur)
-        self.optimizer = torch.optim.SGD(self.neur.parameters(), 0.01) # smooth gradient descent
+        self.optimizer = torch.optim.Adam(self.neur.parameters(), 0.01) # smooth gradient descent
         #self.optimizer_target = torch.optim.Adam(self.neur_target.parameters(), 0.01) # smooth gradient descent
 
         
