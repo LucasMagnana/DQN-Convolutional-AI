@@ -16,7 +16,6 @@ class AgentStick(object):
         self.compteur_buffer = 0
         self.replace_buffer = False
 
-        self.pas = 0.005
         self.epsilon = 1.0
         self.gamma = 0.9
         self.nb_learn_step = 5000

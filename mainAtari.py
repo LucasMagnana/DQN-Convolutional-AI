@@ -6,9 +6,7 @@ from gym import wrappers, logger
 import matplotlib
 import matplotlib.pyplot as plt
 
-from RandomAgent import *
-from AtariPreprocessing import AtariPreprocessing
-from FrameStack import FrameStack
+from AgentAtari import *
 
 
 
@@ -32,11 +30,11 @@ if __name__ == '__main__':
     outdir = './videos/stick-agent-results'
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
+    
+    env = wrappers.AtariPreprocessing(env)
+    env = wrappers.FrameStack(env, 4)
 
-    env = FrameStack(env, 4)
-    preproc = AtariPreprocessing(env)
-
-    agent = RandomAgent(env.action_space)
+    agent = AgentAtari(env.action_space)
 
     episode_count = 100
     reward = 0
@@ -46,16 +44,19 @@ if __name__ == '__main__':
     reward_accumulee=0
     tab_rewards_accumulees = []
 
+
     for i in range(episode_count):
-        ob = preproc.reset()
+        print(i)
+        ob = env.reset()
         while True:
-            ob = ob.astype('float32')
+            ob = torch.Tensor(ob).unsqueeze(0)
             ob_prec = ob
             action = agent.act(ob, reward, done)
-            ob, reward, done, _ = preproc.step(action)
-            print(len(ob))
+            ob, reward, done, _ = env.step(action)
+            agent.memorize(ob_prec, ob, action, reward, done)
             reward_accumulee += reward
             if done:
+                agent.learn()
                 tab_rewards_accumulees.append(reward_accumulee)
                 reward_accumulee=0
                 break
