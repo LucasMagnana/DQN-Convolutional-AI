@@ -6,7 +6,7 @@ from gym import wrappers, logger
 import matplotlib
 import matplotlib.pyplot as plt
 
-from AgentStick import AgentStick
+from AgentStick import *
 
 
 
@@ -30,6 +30,7 @@ if __name__ == '__main__':
     outdir = './videos/stick-agent-results'
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
+
     agent = AgentStick(env.action_space)
 
     episode_count = 1000
@@ -40,23 +41,40 @@ if __name__ == '__main__':
     reward_accumulee=0
     tab_rewards_accumulees = []
 
-    for i in range(episode_count):
+    sum_reward = 0
+    nb_reward = 0
+    avg_reward = 0
+    nb_episodes = 0
+
+
+    while(avg_reward<195.0 and nb_episodes<episode_count): #for i in range(episode_count):
+        nb_episodes += 1
         ob = env.reset()
         while True:
-            ob = ob.astype('float32')
-            ob_prec = ob
+            ob_prec = ob       
             action = agent.act(ob, reward, done)
             ob, reward, done, _ = env.step(action)
-            agent.remplir_buffer(ob_prec, action, ob, reward, done)
+            agent.memorize(ob_prec, action, ob, reward, done)
             reward_accumulee += reward
             if done:
                 agent.learn()
                 tab_rewards_accumulees.append(reward_accumulee)
+                if(nb_reward < 100):
+                    nb_reward+=1
+                else:
+                    sum_reward -= tab_rewards_accumulees[len(tab_rewards_accumulees)-nb_reward+1]
+                sum_reward += reward_accumulee
+                avg_reward = sum_reward/nb_reward
                 reward_accumulee=0
                 break
             # Note there's no env.render() here. But the environment still can open window and
             # render if asked by env.monitor: it calls env.render('rgb_array') to record video.
-            # Video is not recorded every episode, see capped_cubic_video_schedule for details.
+            # Video is not recorded every episode, see capped_cubic_video_schedule for 
+    if(avg_reward > 195.0):
+        print("Solved in ", nb_episodes, " episodes!")
+    else :
+        print("Average: ", avg_reward)
+
     plt.plot(tab_rewards_accumulees)
     plt.ylabel('Reward Accumulée')
     plt.show()

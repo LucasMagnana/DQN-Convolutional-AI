@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # directory, including one with existing data -- all monitor files
     # will be namespaced). You can also dump to a tempdir if you'd
     # like: tempfile.mkdtemp().
-    outdir = './videos/stick-agent-results'
+    outdir = './videos/atari-agent-results'
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
     
@@ -44,16 +44,19 @@ if __name__ == '__main__':
     reward_accumulee=0
     tab_rewards_accumulees = []
 
+    print(env.action_space)
+
 
     for i in range(episode_count):
-        print(i)
+        print("i =", i)
         ob = env.reset()
+        ob = torch.Tensor(ob).unsqueeze(0)
         while True:
-            ob = torch.Tensor(ob).unsqueeze(0)
-            ob_prec = ob
+            ob_prec = ob       
             action = agent.act(ob, reward, done)
             ob, reward, done, _ = env.step(action)
-            agent.memorize(ob_prec, ob, action, reward, done)
+            ob = torch.Tensor(ob).unsqueeze(0)
+            agent.memorize(ob_prec, action, ob, reward, done)
             reward_accumulee += reward
             if done:
                 agent.learn()
