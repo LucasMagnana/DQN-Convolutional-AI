@@ -33,18 +33,15 @@ if __name__ == '__main__':
     
     env = wrappers.AtariPreprocessing(env)
     env = wrappers.FrameStack(env, 4)
+    agent = AgentAtari(torch.cuda.is_available())
 
-    agent = AgentAtari(env.action_space)
-
-    episode_count = 100
+    episode_count = 50
     reward = 0
     done = False
 
 
     reward_accumulee=0
     tab_rewards_accumulees = []
-
-    print(env.action_space)
 
 
     for i in range(episode_count):

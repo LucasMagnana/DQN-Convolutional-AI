@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 class AgentStick(object):
     """The world's simplest agent!"""
-    def __init__(self, action_space):
+    def __init__(self, action_space, neur=None):
         self.action_space = action_space    
         self.buffer = []
         self.buffer_size = 100000
@@ -22,10 +22,13 @@ class AgentStick(object):
         self.epsilon = 1.0
         self.gamma = 0.9
 
-        self.neur = NN()
-        self.neur_target = copy.deepcopy(self.neur)
+        if(neur == None):
+            self.neur = NN()
+            self.neur_target = copy.deepcopy(self.neur)
+        else:
+            self.neur = neur
+            self.epsilon = 0
         self.optimizer = torch.optim.Adam(self.neur.parameters(), 0.001) # smooth gradient descent
-        #self.optimizer_target = torch.optim.Adam(self.neur_target.parameters(), 0.01) # smooth gradient descent
 
         self.i = 0
         self.tab_erreur = []
@@ -41,7 +44,7 @@ class AgentStick(object):
             return indices.item()
         return randint(0, tens_action.size()[0]-1)
 
-    def sample(self, n=64):
+    def sample(self, n=128):
         if(n > len(self.buffer)):
             n = len(self.buffer)
         return sample(self.buffer, n)
@@ -57,7 +60,7 @@ class AgentStick(object):
         if(self.epsilon > 0.1):
             self.epsilon *= 0.99
         spl = self.sample()
-        for screen in spl :
+        '''for screen in spl :
             tensor_qvalues = self.neur(torch.Tensor(screen[0]))
             qvalue = tensor_qvalues[screen[1]]
             reward = screen[3]
@@ -69,9 +72,9 @@ class AgentStick(object):
             else :
                 loss_tmp = loss(qvalue, torch.Tensor(np.array(reward)))
             loss_tmp.backward()
-            self.optimizer.step()
+            self.optimizer.step()'''
 
-        '''tens_ob = torch.Tensor([item[0] for item in spl])
+        tens_ob = torch.Tensor([item[0] for item in spl])
         tens_action = torch.LongTensor([item[1] for item in spl])
         tens_ob_next = torch.Tensor([item[2] for item in spl])
         tens_reward = torch.Tensor([item[3] for item in spl])
@@ -87,7 +90,7 @@ class AgentStick(object):
         self.optimizer.zero_grad()
         tens_loss = loss(tens_qvalue, tens_reward+(self.gamma*tens_next_qvalue)*tens_done)
         tens_loss.backward()
-        self.optimizer.step()'''
+        self.optimizer.step()
 
         for target_param, param in zip(self.neur_target.parameters(), self.neur.parameters()):
             target_param.data.copy_(self.alpha * param + (1-self.alpha)*target_param )

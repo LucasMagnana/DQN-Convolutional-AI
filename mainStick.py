@@ -13,8 +13,9 @@ from AgentStick import *
 
 
 if __name__ == '__main__':
+    module = 'CartPole-v1'
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('env_id', nargs='?', default='CartPole-v1', help='Select the environment to run')
+    parser.add_argument('env_id', nargs='?', default=module, help='Select the environment to run')
     args = parser.parse_args()
 
     # You can set the level to logger.DEBUG or logger.WARN if you
@@ -33,7 +34,7 @@ if __name__ == '__main__':
 
     agent = AgentStick(env.action_space)
 
-    episode_count = 1000
+    episode_count = 2000
     reward = 0
     done = False
 
@@ -46,8 +47,10 @@ if __name__ == '__main__':
     avg_reward = 0
     nb_episodes = 0
 
+    save = False
 
-    while(avg_reward<195.0 and nb_episodes<episode_count): #for i in range(episode_count):
+
+    while(avg_reward<600 and nb_episodes<episode_count): #for i in range(episode_count):
         nb_episodes += 1
         ob = env.reset()
         while True:
@@ -74,6 +77,11 @@ if __name__ == '__main__':
         print("Solved in ", nb_episodes, " episodes!")
     else :
         print("Average: ", avg_reward)
+
+    if(save):
+        print("Saving...")
+        torch.save(agent.neur.state_dict(), module+'.n')
+        torch.save(agent.neur_target.state_dict(), module+'_target.n')
 
     plt.plot(tab_rewards_accumulees)
     plt.ylabel('Reward Accumulée')
