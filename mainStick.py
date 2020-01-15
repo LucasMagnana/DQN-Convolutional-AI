@@ -28,7 +28,8 @@ if __name__ == '__main__':
     # directory, including one with existing data -- all monitor files
     # will be namespaced). You can also dump to a tempdir if you'd
     # like: tempfile.mkdtemp().
-    outdir = './videos/stick-agent-results'
+    
+    outdir = './videos/'+module
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
 
@@ -80,8 +81,7 @@ if __name__ == '__main__':
 
     if(save):
         print("Saving...")
-        torch.save(agent.neur.state_dict(), module+'.n')
-        torch.save(agent.neur_target.state_dict(), module+'_target.n')
+        torch.save(agent.neur.state_dict(), './trained_networks/'+module+'.n')
 
     plt.plot(tab_rewards_accumulees)
     plt.ylabel('Reward Accumulée')

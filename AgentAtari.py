@@ -13,25 +13,30 @@ import matplotlib.pyplot as plt
 
 class AgentAtari(object):
     """The world's simplest agent!"""
-    def __init__(self, cuda): 
+    def __init__(self, cuda, cnn_input, cnn_output): 
         self.buffer = []
         self.buffer_size = 100000
         self.cuda = cuda
 
-        self.alpha = 0.05
         self.epsilon = 1.0
-        self.gamma = 0.9
+        self.final_epsilon = 0.1
+        self.gamma = 0.99
 
-        if(self.cuda ):
-            self.neur = CNN().cuda()
+        self.final_exploration = 1000000
+        self.epsilon_decay = (self.epsilon-self.final_epsilon)/self.final_exploration
+
+        self.target_update_frequency = 10000
+        self.learn_step = 0
+
+        self.replay_start_size = 0
+
+        if(self.cuda):
+            self.neur = CNN(cnn_input, cnn_output).cuda()
         else: 
-            self.neur = CNN()
+            self.neur = CNN(cnn_input, cnn_output)
 
         self.neur_target = copy.deepcopy(self.neur)
-        self.optimizer = torch.optim.Adam(self.neur.parameters(), 0.001) # smooth gradient descent
-
-        self.i = 0
-        self.tab_erreur = []
+        self.optimizer = torch.optim.RMSprop(self.neur.parameters(), lr=0.00025, momentum=0.95, alpha=0.95, eps=0.01) # smooth gradient descent
         
 
 
@@ -46,7 +51,7 @@ class AgentAtari(object):
             return indices.item()
         return randint(0, tens_action.size()[0]-1)
 
-    def sample(self, n=64):
+    def sample(self, n=32):
         if(n > len(self.buffer)):
             n = len(self.buffer)
         return sample(self.buffer, n)
@@ -57,25 +62,15 @@ class AgentAtari(object):
         self.buffer.append([ob_prec, action, ob, reward, not(done)])
 
     def learn(self):
-        self.i += 1
-        loss = MSELoss()
-        if(self.epsilon > 0.1):
-            self.epsilon *= 0.99
-        spl = self.sample()
-        '''for screen in spl :
-            tensor_qvalues = self.neur(torch.Tensor(screen[0]))
-            qvalue = tensor_qvalues[screen[1]]
-            reward = screen[3]
-            next_qvalues = self.neur_target(torch.Tensor(screen[2]))
-            max_next_qvalues = torch.max(next_qvalues)
-            self.optimizer.zero_grad()
-            if(screen[4]):
-                loss_tmp = loss(qvalue, reward+(self.gamma*max_next_qvalues))
-            else :
-                loss_tmp = loss(qvalue, torch.Tensor(np.array(reward)))
-            loss_tmp.backward()
-            self.optimizer.step()'''
+        if(len(self.buffer)<self.replay_start_size):
+            return
 
+        self.learn_step +=1
+        if(self.epsilon > self.final_epsilon):
+            self.epsilon -= self.epsilon_decay
+
+        loss = MSELoss() 
+        spl = self.sample()
         tens_ob = torch.cat([item[0] for item in spl])
         tens_action = torch.LongTensor([item[1] for item in spl])
         tens_ob_next = torch.cat([item[2] for item in spl])
@@ -98,7 +93,9 @@ class AgentAtari(object):
         tens_loss.backward()
         self.optimizer.step()
 
-        for target_param, param in zip(self.neur_target.parameters(), self.neur.parameters()):
-            target_param.data.copy_(self.alpha * param + (1-self.alpha)*target_param )
+        if(self.learn_step == self.target_update_frequency):
+            self.learn_step = 0
+            self.neur_target = copy.deepcopy(self.neur)
+
             
 

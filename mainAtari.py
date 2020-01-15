@@ -13,8 +13,9 @@ from AgentAtari import *
 
 
 if __name__ == '__main__':
+    module = 'BreakoutNoFrameskip-v4'
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('env_id', nargs='?', default='BreakoutNoFrameskip-v4', help='Select the environment to run')
+    parser.add_argument('env_id', nargs='?', default=module, help='Select the environment to run')
     args = parser.parse_args()
 
     # You can set the level to logger.DEBUG or logger.WARN if you
@@ -27,13 +28,13 @@ if __name__ == '__main__':
     # directory, including one with existing data -- all monitor files
     # will be namespaced). You can also dump to a tempdir if you'd
     # like: tempfile.mkdtemp().
-    outdir = './videos/atari-agent-results'
+    outdir = './videos/'+module
     env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
     
     env = wrappers.AtariPreprocessing(env)
     env = wrappers.FrameStack(env, 4)
-    agent = AgentAtari(torch.cuda.is_available())
+    agent = AgentAtari(torch.cuda.is_available(), 4, env.action_space.n)
 
     episode_count = 50
     reward = 0
@@ -45,7 +46,6 @@ if __name__ == '__main__':
 
 
     for i in range(episode_count):
-        print("i =", i)
         ob = env.reset()
         ob = torch.Tensor(ob).unsqueeze(0)
         while True:
@@ -63,9 +63,11 @@ if __name__ == '__main__':
             # Note there's no env.render() here. But the environment still can open window and
             # render if asked by env.monitor: it calls env.render('rgb_array') to record video.
             # Video is not recorded every episode, see capped_cubic_video_schedule for details.
-    plt.plot(tab_rewards_accumulees)
+
+    torch.save(agent.neur.state_dict(), './trained_networks/'+module+'.n')
+    '''plt.plot(tab_rewards_accumulees)
     plt.ylabel('Reward Accumulée')
-    plt.show()
+    plt.show()'''
 
     # Close the env and write monitor result info to disk
     env.close()
