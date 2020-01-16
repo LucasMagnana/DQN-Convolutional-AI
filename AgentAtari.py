@@ -28,7 +28,7 @@ class AgentAtari(object):
         self.target_update_frequency = 10000
         self.learn_step = 0
 
-        self.replay_start_size = 0
+        self.replay_start_size = 50000
 
         if(self.cuda):
             self.neur = CNN(cnn_input, cnn_output).cuda()
@@ -93,7 +93,7 @@ class AgentAtari(object):
         tens_loss.backward()
         self.optimizer.step()
 
-        if(self.learn_step == self.target_update_frequency):
+        if(self.learn_step >= self.target_update_frequency):
             self.learn_step = 0
             self.neur_target = copy.deepcopy(self.neur)
 

@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from AgentAtari import *
+import time
 
 
 
@@ -37,6 +38,7 @@ if __name__ == '__main__':
     agent = AgentAtari(torch.cuda.is_available(), 4, env.action_space.n)
 
     episode_count = 50
+    nb_frames_max = 5000000
     reward = 0
     done = False
 
@@ -44,11 +46,20 @@ if __name__ == '__main__':
     reward_accumulee=0
     tab_rewards_accumulees = []
 
+    continuer = True
+    nb_frames = 0
 
-    for i in range(episode_count):
+    start_time = time.time()
+
+    while(continuer):
         ob = env.reset()
         ob = torch.Tensor(ob).unsqueeze(0)
         while True:
+            nb_frames +=1
+            if(nb_frames%1000000 == 0):
+                print("--- %s seconds ---" % (time.time() - start_time))
+                if(nb_frames >= nb_frames_max):
+                    continuer = False
             ob_prec = ob       
             action = agent.act(ob, reward, done)
             ob, reward, done, _ = env.step(action)
