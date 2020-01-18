@@ -30,7 +30,6 @@ if __name__ == '__main__':
     # will be namespaced). You can also dump to a tempdir if you'd
     # like: tempfile.mkdtemp().
     outdir = './videos/'+module
-    env = wrappers.Monitor(env, directory=outdir, force=True)
     env.seed(0)
     
     env = wrappers.AtariPreprocessing(env)
@@ -39,6 +38,8 @@ if __name__ == '__main__':
 
     episode_count = 50
     nb_frames_max = 5000000
+    checkpoint = nb_frames_max/10
+    nb_checkpoints = 0
     reward = 0
     done = False
 
@@ -56,8 +57,10 @@ if __name__ == '__main__':
         ob = torch.Tensor(ob).unsqueeze(0)
         while True:
             nb_frames +=1
-            if(nb_frames%1000000 == 0):
+            if(nb_frames%checkpoint == 0):
                 print("--- %s seconds ---" % (time.time() - start_time))
+                torch.save(agent.neur.state_dict(), './trained_networks/'+module+'_'+str(nb_checkpoints)+'.n')
+                nb_checkpoints += 1
                 if(nb_frames >= nb_frames_max):
                     continuer = False
             ob_prec = ob       

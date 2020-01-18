@@ -15,7 +15,7 @@ class AgentAtari(object):
     """The world's simplest agent!"""
     def __init__(self, cuda, cnn_input, cnn_output): 
         self.buffer = []
-        self.buffer_size = 100000
+        self.buffer_size = 1000000
         self.cuda = cuda
 
         self.epsilon = 1.0
@@ -64,7 +64,6 @@ class AgentAtari(object):
     def learn(self):
         if(len(self.buffer)<self.replay_start_size):
             return
-
         self.learn_step +=1
         if(self.epsilon > self.final_epsilon):
             self.epsilon -= self.epsilon_decay
