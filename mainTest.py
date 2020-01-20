@@ -6,15 +6,15 @@ from gym import wrappers, logger
 import matplotlib
 import matplotlib.pyplot as plt
 
-from AgentStick import *
-from NeuronalNetwork import NN
+from AgentAtari import *
+from ConvNeuronalNetwork import CNN
 
 
 
 
 
 if __name__ == '__main__':
-    module = 'CartPole-v1'
+    module = 'BreakoutNoFrameskip-v4'
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('env_id', nargs='?', default=module, help='Select the environment to run')
     args = parser.parse_args()
@@ -24,17 +24,22 @@ if __name__ == '__main__':
     logger.set_level(logger.WARN)
 
     env = gym.make(args.env_id)
+    outdir = './videos/'+module
+    env = wrappers.Monitor(env, directory=outdir, force=True)
 
     # You provide the directory to write to (can be an existing
     # directory, including one with existing data -- all monitor files
     # will be namespaced). You can also dump to a tempdir if you'd
     # like: tempfile.mkdtemp().
     env.seed(0)
+    
+    preproc = wrappers.AtariPreprocessing(env)
+    preproc = wrappers.FrameStack(preproc, 4)
 
-    neur = NN()
-    neur.load_state_dict(torch.load(module+'.n'))
+    neur = CNN(4, env.action_space.n)
+    neur.load_state_dict(torch.load('./trained_networks/'+module+'.n'))
     neur.eval()
-    agent = AgentStick(env.action_space, neur)
+    agent = AgentAtari(4, env.action_space.n, False, neur)
 
     episode_count = 5
 
@@ -46,13 +51,16 @@ if __name__ == '__main__':
 
 
     for _ in range(episode_count):
-        ob = env.reset()
+        ob = preproc.reset()
+        ob = torch.Tensor(ob).unsqueeze(0)
         while True:
-            env.render()
+            #env.render()
             ob_prec = ob       
             action = agent.act(ob, reward, done)
-            ob, reward, done, _ = env.step(action)
+            ob, reward, done, _ = preproc.step(action)
+            ob = torch.Tensor(ob).unsqueeze(0)
             reward_accumulee += reward
+            print(reward)
             if done:
                 print("Reward : ", reward_accumulee)
                 reward_accumulee = 0

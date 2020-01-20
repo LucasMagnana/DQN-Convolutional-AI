@@ -34,10 +34,10 @@ if __name__ == '__main__':
     
     env = wrappers.AtariPreprocessing(env)
     env = wrappers.FrameStack(env, 4)
-    agent = AgentAtari(torch.cuda.is_available(), 4, env.action_space.n)
+    agent = AgentAtari(4, env.action_space.n, torch.cuda.is_available())
 
     episode_count = 50
-    nb_frames_max = 5000000
+    nb_frames_max = 1500
     checkpoint = nb_frames_max/10
     nb_checkpoints = 0
     reward = 0
@@ -61,6 +61,8 @@ if __name__ == '__main__':
                 print("--- %s seconds ---" % (time.time() - start_time))
                 torch.save(agent.neur.state_dict(), './trained_networks/'+module+'_'+str(nb_checkpoints)+'.n')
                 nb_checkpoints += 1
+                print(tab_rewards_accumulees[-100:])
+                tab_rewards_accumulees = []
                 if(nb_frames >= nb_frames_max):
                     continuer = False
             ob_prec = ob       

@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 
 class AgentAtari(object):
     """The world's simplest agent!"""
-    def __init__(self, cuda, cnn_input, cnn_output): 
+    def __init__(self, cnn_input, cnn_output, cuda=False, neur=None): 
         self.buffer = []
-        self.buffer_size = 1000000
+        self.buffer_size = 250000
         self.cuda = cuda
 
         self.epsilon = 1.0
@@ -30,10 +30,14 @@ class AgentAtari(object):
 
         self.replay_start_size = 50000
 
-        if(self.cuda):
-            self.neur = CNN(cnn_input, cnn_output).cuda()
-        else: 
-            self.neur = CNN(cnn_input, cnn_output)
+        if(neur == None):
+            if(self.cuda):
+                self.neur = CNN(cnn_input, cnn_output).cuda()
+            else: 
+                self.neur = CNN(cnn_input, cnn_output)
+        else:
+            self.neur = neur
+            self.epsilon = 0
 
         self.neur_target = copy.deepcopy(self.neur)
         self.optimizer = torch.optim.RMSprop(self.neur.parameters(), lr=0.00025, momentum=0.95, alpha=0.95, eps=0.01) # smooth gradient descent
@@ -57,16 +61,18 @@ class AgentAtari(object):
         return sample(self.buffer, n)
 
     def memorize(self, ob_prec, action, ob, reward, done):
+        if(self.epsilon > self.final_epsilon):
+            self.epsilon -= self.epsilon_decay
         if(len(self.buffer) > self.buffer_size):
             self.buffer.pop(0)
+        else:
+            print(len(self.buffer))
         self.buffer.append([ob_prec, action, ob, reward, not(done)])
 
     def learn(self):
         if(len(self.buffer)<self.replay_start_size):
             return
         self.learn_step +=1
-        if(self.epsilon > self.final_epsilon):
-            self.epsilon -= self.epsilon_decay
 
         loss = MSELoss() 
         spl = self.sample()
