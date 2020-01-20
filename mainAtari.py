@@ -37,7 +37,7 @@ if __name__ == '__main__':
     agent = AgentAtari(4, env.action_space.n, torch.cuda.is_available())
 
     episode_count = 50
-    nb_frames_max = 1500
+    nb_frames_max = 50000000
     checkpoint = nb_frames_max/10
     nb_checkpoints = 0
     reward = 0
@@ -45,7 +45,6 @@ if __name__ == '__main__':
 
 
     reward_accumulee=0
-    tab_rewards_accumulees = []
 
     continuer = True
     nb_frames = 0
@@ -61,10 +60,9 @@ if __name__ == '__main__':
                 print("--- %s seconds ---" % (time.time() - start_time))
                 torch.save(agent.neur.state_dict(), './trained_networks/'+module+'_'+str(nb_checkpoints)+'.n')
                 nb_checkpoints += 1
-                print(tab_rewards_accumulees[-100:])
-                tab_rewards_accumulees = []
                 if(nb_frames >= nb_frames_max):
                     continuer = False
+                    break
             ob_prec = ob       
             action = agent.act(ob, reward, done)
             ob, reward, done, _ = env.step(action)
@@ -73,7 +71,6 @@ if __name__ == '__main__':
             reward_accumulee += reward
             if done:
                 agent.learn()
-                tab_rewards_accumulees.append(reward_accumulee)
                 reward_accumulee=0
                 break
             # Note there's no env.render() here. But the environment still can open window and
