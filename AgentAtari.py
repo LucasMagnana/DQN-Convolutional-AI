@@ -15,7 +15,7 @@ class AgentAtari(object):
     """The world's simplest agent!"""
     def __init__(self, cnn_input, cnn_output, cuda=False, neur=None): 
         self.buffer = []
-        self.buffer_size = 500000
+        self.buffer_size = 750000
         self.cuda = cuda
 
         self.epsilon = 1.0
