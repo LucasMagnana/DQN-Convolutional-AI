@@ -71,8 +71,8 @@ if __name__ == '__main__':
             ob = torch.Tensor(ob).unsqueeze(0)
             agent.memorize(ob_prec, action, ob, reward, done)
             reward_accumulee += reward
+            agent.learn()
             if done:
-                agent.learn()
                 tab_rewards_accumulees.append(reward_accumulee)
                 reward_accumulee=0
                 break

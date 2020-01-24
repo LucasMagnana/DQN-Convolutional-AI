@@ -15,20 +15,20 @@ class AgentAtari(object):
     """The world's simplest agent!"""
     def __init__(self, cnn_input, cnn_output, cuda=False, neur=None): 
         self.buffer = []
-        self.buffer_size = 750000
+        self.buffer_size = 250000
         self.cuda = cuda
 
         self.epsilon = 1.0
         self.final_epsilon = 0.1
         self.gamma = 0.99
 
-        self.final_exploration = 1000000
+        self.final_exploration = 100000
         self.epsilon_decay = (self.epsilon-self.final_epsilon)/self.final_exploration
 
         self.target_update_frequency = 10000
         self.learn_step = 0
 
-        self.replay_start_size = 50000
+        self.replay_start_size = 5000
 
         if(neur == None):
             if(self.cuda):
@@ -40,7 +40,7 @@ class AgentAtari(object):
             self.epsilon = 0
 
         self.neur_target = copy.deepcopy(self.neur)
-        self.optimizer = torch.optim.RMSprop(self.neur.parameters(), lr=0.00025, momentum=0.95, alpha=0.95, eps=0.01) # smooth gradient descent
+        self.optimizer = torch.optim.RMSprop(self.neur.parameters(), lr=0.0025, momentum=0.95, alpha=0.95, eps=0.01) # smooth gradient descent
         
 
 
