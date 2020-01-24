@@ -37,7 +37,7 @@ if __name__ == '__main__':
     agent = AgentAtari(4, env.action_space.n, torch.cuda.is_available())
 
     episode_count = 50
-    nb_frames_max = 50000000
+    nb_frames_max = 5000000
     checkpoint = nb_frames_max/10
     nb_checkpoints = 0
     reward = 0

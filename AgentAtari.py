@@ -65,8 +65,6 @@ class AgentAtari(object):
             self.epsilon -= self.epsilon_decay
         if(len(self.buffer) > self.buffer_size):
             self.buffer.pop(0)
-        else:
-            print(len(self.buffer))
         self.buffer.append([ob_prec, action, ob, reward, not(done)])
 
     def learn(self):
