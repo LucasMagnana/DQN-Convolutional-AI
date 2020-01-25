@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from AgentAtari import *
 import time
 
+from arguments import *
+
 
 
 
@@ -34,15 +36,15 @@ if __name__ == '__main__':
     
     env = wrappers.AtariPreprocessing(env)
     env = wrappers.FrameStack(env, 4)
-    agent = AgentAtari(4, env.action_space.n, torch.cuda.is_available())
 
-    episode_count = 50
-    nb_frames_max = 5000000
+    args = get_args()
+    agent = AgentAtari(4, env.action_space.n, args, torch.cuda.is_available())
+
+    nb_frames_max = args.total_timesteps
     checkpoint = nb_frames_max/10
     nb_checkpoints = 0
     reward = 0
     done = False
-
 
     reward_accumulee=0
     tab_rewards_accumulees = []
@@ -52,33 +54,31 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    while(continuer):
-        ob = env.reset()
+    ob = env.reset()
+    ob = torch.Tensor(ob).unsqueeze(0)
+    for timestep in range(nb_frames_max):
+        if(timestep%checkpoint == 0):
+            print("--- %s seconds ---" % (time.time() - start_time))
+            torch.save(agent.neur.state_dict(), './trained_networks/'+module+'_'+str(nb_checkpoints)+'.n')
+            nb_checkpoints += 1
+            print(tab_rewards_accumulees[-100:])
+            tab_rewards_accumulees = []
+        ob_prec = ob       
+        action = agent.act(ob, reward, done)
+        ob, reward, done, _ = env.step(action)
         ob = torch.Tensor(ob).unsqueeze(0)
-        while True:
-            nb_frames +=1
-            if(nb_frames%checkpoint == 0):
-                print("--- %s seconds ---" % (time.time() - start_time))
-                torch.save(agent.neur.state_dict(), './trained_networks/'+module+'_'+str(nb_checkpoints)+'.n')
-                nb_checkpoints += 1
-                print(tab_rewards_accumulees[-100:])
-                tab_rewards_accumulees = []
-                if(nb_frames >= nb_frames_max):
-                    continuer = False
-            ob_prec = ob       
-            action = agent.act(ob, reward, done)
-            ob, reward, done, _ = env.step(action)
+        agent.memorize(ob_prec, action, ob, reward, done)
+        reward_accumulee += reward
+        agent.learn(timestep)
+        if done:
+            tab_rewards_accumulees.append(reward_accumulee)
+            reward_accumulee=0
+            ob = env.reset()
             ob = torch.Tensor(ob).unsqueeze(0)
-            agent.memorize(ob_prec, action, ob, reward, done)
-            reward_accumulee += reward
-            agent.learn()
-            if done:
-                tab_rewards_accumulees.append(reward_accumulee)
-                reward_accumulee=0
-                break
-            # Note there's no env.render() here. But the environment still can open window and
-            # render if asked by env.monitor: it calls env.render('rgb_array') to record video.
-            # Video is not recorded every episode, see capped_cubic_video_schedule for details.
+            
+        # Note there's no env.render() here. But the environment still can open window and
+        # render if asked by env.monitor: it calls env.render('rgb_array') to record video.
+        # Video is not recorded every episode, see capped_cubic_video_schedule for details.
 
     torch.save(agent.neur.state_dict(), './trained_networks/'+module+'.n')
     '''plt.plot(tab_rewards_accumulees)

@@ -13,34 +13,38 @@ import matplotlib.pyplot as plt
 
 class AgentAtari(object):
     """The world's simplest agent!"""
-    def __init__(self, cnn_input, cnn_output, cuda=False, neur=None): 
+    def __init__(self, cnn_input, cnn_output, args, cuda=False, neur=None): 
+        self.args = args
+
         self.buffer = []
-        self.buffer_size = 250000
-        self.cuda = cuda
+        self.buffer_size = self.args.buffer_size
+        self.batch_size = self.args.batch_size
 
-        self.epsilon = 1.0
-        self.final_epsilon = 0.1
-        self.gamma = 0.99
+        self.gamma = self.args.gamma
 
-        self.final_exploration = 100000
+        self.epsilon = self.args.init_ratio
+        self.final_epsilon = self.args.final_ratio
+        self.final_exploration = self.args.exploration_fraction*self.args.total_timesteps
         self.epsilon_decay = (self.epsilon-self.final_epsilon)/self.final_exploration
 
-        self.target_update_frequency = 10000
-        self.learn_step = 0
+        self.target_update_frequency = self.args.target_network_update_freq
 
-        self.replay_start_size = 5000
+        self.replay_start_size = self.args.learning_starts
+        self.train_frequency = self.args.train_freq
 
+        self.cuda = cuda
         if(neur == None):
+            self.neur = CNN(cnn_input, cnn_output)
             if(self.cuda):
-                self.neur = CNN(cnn_input, cnn_output).cuda()
-            else: 
-                self.neur = CNN(cnn_input, cnn_output)
+                self.neur.cuda()
         else:
             self.neur = neur
             self.epsilon = 0
 
         self.neur_target = copy.deepcopy(self.neur)
-        self.optimizer = torch.optim.RMSprop(self.neur.parameters(), lr=0.0025, momentum=0.95, alpha=0.95, eps=0.01) # smooth gradient descent
+        self.neur_target.load_state_dict(self.neur.state_dict())
+
+        self.optimizer = torch.optim.Adam(self.neur.parameters(), self.args.lr) # smooth gradient descent
         
 
 
@@ -55,22 +59,24 @@ class AgentAtari(object):
             return indices.item()
         return randint(0, tens_action.size()[0]-1)
 
-    def sample(self, n=32):
-        if(n > len(self.buffer)):
-            n = len(self.buffer)
-        return sample(self.buffer, n)
+    def sample(self):
+        return sample(self.buffer, self.batch_size)
 
     def memorize(self, ob_prec, action, ob, reward, done):
-        if(self.epsilon > self.final_epsilon):
-            self.epsilon -= self.epsilon_decay
         if(len(self.buffer) > self.buffer_size):
             self.buffer.pop(0)
         self.buffer.append([ob_prec, action, ob, reward, not(done)])
 
-    def learn(self):
-        if(len(self.buffer)<self.replay_start_size):
+    def learn(self, timestep):
+        if(self.epsilon != self.final_epsilon):
+            if(self.epsilon > self.final_epsilon):
+                self.epsilon -= self.epsilon_decay
+            else:
+                self.epsilon = self.final_epsilon
+                print("Epsilon done : ", self.epsilon, timestep)
+
+        if(timestep<self.replay_start_size or timestep % self.train_frequency != 0):
             return
-        self.learn_step +=1
 
         loss = MSELoss() 
         spl = self.sample()
@@ -81,24 +87,27 @@ class AgentAtari(object):
         tens_done = torch.Tensor([item[4] for item in spl])
 
         if(self.cuda):
-            tens_qvalue = self.neur(tens_ob.cuda()).cpu()
-            tens_next_qvalue = self.neur_target(tens_ob_next.cuda()).cpu()
-        else:
-            tens_qvalue = self.neur(tens_ob)
-            tens_next_qvalue = self.neur_target(tens_ob_next)
+            tens_ob = tens_ob.cuda()
+            tens_action = tens_action.cuda()
+            tens_ob_next = tens_ob_next.cuda()
+            tens_reward = tens_reward.cuda()
+            tens_done = tens_done.cuda()
 
+        with torch.no_grad():
+            tens_next_qvalue = self.neur_target(tens_ob_next)
+            tens_next_qvalue = torch.max(tens_next_qvalue, 1)[0]
+
+        tens_qvalue = self.neur(tens_ob)
         tens_qvalue = torch.index_select(tens_qvalue, 1, tens_action).diag()
 
-        tens_next_qvalue = torch.max(tens_next_qvalue, 1)[0]
 
         self.optimizer.zero_grad()
         tens_loss = loss(tens_qvalue, tens_reward+(self.gamma*tens_next_qvalue)*tens_done)
         tens_loss.backward()
         self.optimizer.step()
 
-        if(self.learn_step >= self.target_update_frequency):
-            self.learn_step = 0
-            self.neur_target = copy.deepcopy(self.neur)
+        if(timestep % self.target_update_frequency == 0):
+            self.neur_target.load_state_dict(self.neur.state_dict())
 
             
 
